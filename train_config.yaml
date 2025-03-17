@@ -1,0 +1,75 @@
+device: cuda
+
+model:
+  init_feature_size: 64
+  grad_mixup: False
+  grad_replicas: 1
+  no_res_modules: 4
+  res_module_channels:
+    - 1:
+      - 64
+      - 64
+      - 64
+      - 64
+    
+    - 2:
+      - 64
+      - 64
+      - 64
+      - 64
+
+    - 3:
+      - 64
+      - 64
+      - 64
+      - 64
+
+    - 4:
+      - 64
+      - 64
+      - 64
+      - 64
+
+
+dataset:
+  train_files:
+    paths:
+      - ./datasets/DIV2K/train
+      - ./datasets/DIV2K/val
+      - ./datasets/BSD/train
+      - ./datasets/BSD/test
+      - ./datasets/BSD/val
+  val_files:
+    paths:
+      - ./datasets/CBSD68/train
+      - ./datasets/CBSD68/val
+      - ./datasets/Kodak24
+      - ./datasets/McMaster
+
+  augmentations:
+    awgn:
+      enabled: True
+      sigma_min: 0.03
+      sigma_max: 0.15
+    
+    flip:
+      enabled: True
+    
+    rotate:
+      enabled: True
+    
+    crop:
+      height: 80
+      width: 80
+      count: 4
+
+   
+
+training:
+  learning_rate: 1e-3
+  learning_rate_decay_patience: 20
+  learning_rate_decay_factor: 0.2
+  grad_loss_weight: 0.1
+  epochs: 200
+  batch_size: 32
+  ckpt_path: "./checkpoints"
