@@ -5,65 +5,118 @@ model:
   grad_mixup: False
   grad_replicas: 1
   no_res_modules: 4
-  res_module_channels:
-    - 1:
-      - 64
-      - 64
-      - 64
-      - 64
+  res_modules_units_channels:
+    1:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
     
-    - 2:
-      - 64
-      - 64
-      - 64
-      - 64
+    2:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
 
-    - 3:
-      - 64
-      - 64
-      - 64
-      - 64
+    3:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
 
-    - 4:
-      - 64
-      - 64
-      - 64
-      - 64
-
+    4:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
 
 dataset:
   train_files:
     paths:
-      - ./datasets/DIV2K/train
-      - ./datasets/DIV2K/val
-      - ./datasets/BSD/train
-      - ./datasets/BSD/test
-      - ./datasets/BSD/val
+      # - ./datasets/DIV2K/train
+      # - ./datasets/DIV2K/val
+      # - ./datasets/BSD/train
+      # - ./datasets/BSD/test
+      # - ./datasets/BSD/val
+      - ./datasets/CBSD68/val
   val_files:
     paths:
-      - ./datasets/CBSD68/train
-      - ./datasets/CBSD68/val
-      - ./datasets/Kodak24
+      # - ./datasets/CBSD68/train
+      # - ./datasets/CBSD68/val
+      # - ./datasets/Kodak24
       - ./datasets/McMaster
+  
+  train_in_memory: True
+  val_in_memory: True
 
   augmentations:
     awgn:
-      enabled: True
-      sigma_min: 0.03
-      sigma_max: 0.15
+      enabled_train: True
+      enabled_val: False
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
     
     flip:
-      enabled: True
+      enabled_train: True
+      enabled_val: False
     
     rotate:
-      enabled: True
-    
+      enabled_train: True
+      enabled_val: False
+
     crop:
       height: 80
       width: 80
       count: 4
 
-   
 
 training:
   learning_rate: 1e-3
@@ -71,5 +124,5 @@ training:
   learning_rate_decay_factor: 0.2
   grad_loss_weight: 0.1
   epochs: 200
-  batch_size: 32
+  batch_size: 8
   ckpt_path: "./checkpoints"
