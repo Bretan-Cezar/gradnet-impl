@@ -14,7 +14,8 @@ from dataset import CustomDataset, Augmentations
 from tqdm import tqdm
 from gradients import GradientUtils
 from pathlib import Path
-from datetime import datetime 
+from datetime import datetime
+from numpy import ndarray, uint8, clip
  
 @dataclass
 class TrainArgs:
@@ -102,7 +103,7 @@ def train(a: TrainArgs):
             dt = datetime.now().replace(microsecond=0).isoformat().replace(':', '.')
 
             save(
-                a.model.state_dict(),
+                a.model,
                 a.ckpt_path / f"ckpt-{epoch}-{val_psnr_mean:.2f}-{train_main_loss_mean:.4f}-{dt}.pt"
             )
 
@@ -135,14 +136,15 @@ def validate(a: ValidateArgs):
             x: Tensor = x.to(float32).to(a.device)
             x_naive: Tensor = x_naive.to(float32).to(a.device)
             
-            y_pred = a.model(x, x_naive)
-            y_pred = y_pred.cpu().numpy()
+            y_pred: ndarray = a.model(x, x_naive).cpu().numpy()
+            x: ndarray = x.cpu().numpy()
             
-            x = x.cpu().numpy()
+            x = (255.0 * clip(x, 0.0, 1.0)).astype(uint8)
+            y_pred = (255.0 * clip(y_pred, 0.0, 1.0)).astype(uint8)
             
             for i in range(y_pred.shape[0]):
-                y_pred_sample = y_pred[i, :, :, :]
                 x_sample = x[i, :, :, :]
+                y_pred_sample = y_pred[i, :, :, :]
 
                 psnr_mean += PSNR(y_pred_sample, x_sample)
                 no_samples += 1
@@ -192,6 +194,7 @@ def main(config):
     grad_loss_weight = float(config["training"]["grad_loss_weight"])
     epochs = int(config["training"]["epochs"])
     train_batch_size = int(config["training"]["batch_size"])
+    num_workers = int(config["training"]["num_workers"])
 
     dt = datetime.now().replace(microsecond=0).isoformat().replace(':', '.')
     ckpt_path = Path(str(config["training"]["ckpt_path"])) / dt
@@ -254,8 +257,10 @@ def main(config):
     dl_train = DataLoader(
         ds_train,
         batch_size=train_batch_size,
-        shuffle=True,
-        drop_last=True
+        # shuffle=True,
+        shuffle=False,
+        drop_last=True,
+        num_workers=num_workers
     )
 
     ds_val = CustomDataset(
@@ -270,9 +275,11 @@ def main(config):
     dl_val = DataLoader(
         ds_val,
         # batch_size=len(ds_val),
-        batch_size=1,
-        shuffle=True,
-        drop_last=True
+        batch_size=len(ds_val) // num_workers,
+        # shuffle=True,
+        shuffle=False,
+        drop_last=True,
+        num_workers=8
     )
     
     model = GradNet(

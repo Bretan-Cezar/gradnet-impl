@@ -1,0 +1,12 @@
+device: cuda
+
+model_path: "./checkpoints/2025-03-23T17.02.22/ckpt-2-74.76-0.0075-2025-03-23T17.06.12.pt"
+
+files:
+  input_paths:
+    - "./datasets/Kodak24"
+  
+  output_root_path: "./resources/inference"
+
+inference:
+  bm3d_sigma: 0.141

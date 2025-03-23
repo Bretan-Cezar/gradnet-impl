@@ -1,7 +1,8 @@
-from torch import Tensor, FloatTensor, concat, add, mul, zeros
+from torch import Tensor, concat, add, mul, zeros, logical_not, from_numpy, tensor, int32
 from torch.nn import Conv2d, ReLU, Sequential, AdaptiveAvgPool2d, Sigmoid, Module
 from typing import Union, List, Tuple
 from gradients import GradientUtils
+import numpy as np
 
 class ResUnit(Module):
     def __init__(self, in_channels: int, hidden_channels: int = None, out_channels: int = None):
@@ -196,18 +197,18 @@ class GradNet(Module):
             x1 = concat((x1, x_grad), dim=1)
 
         else:
-            period = (self.__grad_feature_size) // (self.__grad_replicas * 3)
+            step = (self.__grad_feature_size) // (self.__grad_replicas * 3) + 1
 
-            grad_mask = zeros((x1.size(0), x1.size(1) + self.__grad_replicas*3, x1.size(2), x1.size(3))).to(self.__device)
+            x_mixup = zeros((x1.size(0), self.__grad_feature_size, x1.size(2), x1.size(3))).to(self.__device)
             
-            grad_mask[:, ::period, :, :] = 1
+            grad_idx = np.arange(0, self.__grad_replicas*3*step, step, dtype=np.int32)
+            feat_idx = sorted(list(set(np.arange(0, self.__grad_feature_size)) - set(grad_idx)))
 
-            x_mixup = zeros((x1.size(0), x1.size(1) + self.__grad_replicas*3, x1.size(2), x1.size(3)), requires_grad=self.__training)
-            
-            x_mixup[grad_mask == 0] = x1
-            x_mixup[grad_mask == 1] = x_grad.repeat(1, self.__grad_replicas, 1, 1)
-            
-            x1 = x_mixup
+            grad_idx = from_numpy(grad_idx).to(self.__device)
+            feat_idx = tensor(feat_idx, dtype=int32, device=self.__device)
+
+            x_mixup[:, feat_idx, :, :] = x1
+            x_mixup[:, grad_idx, :, :] = x_grad.repeat(1, self.__grad_replicas, 1, 1)
         
         # Long skip connection
         x2 = add(self.__seq(x1), x1)

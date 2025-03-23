@@ -3,7 +3,7 @@ from bm3d import bm3d_rgb
 from pathlib import Path
 from typing import List, Tuple, Set, Union
 from enum import StrEnum
-from cv2 import rotate, flip, imread, ROTATE_90_CLOCKWISE, ROTATE_90_COUNTERCLOCKWISE, ROTATE_180
+from cv2 import rotate, flip, imread, ROTATE_90_CLOCKWISE, ROTATE_90_COUNTERCLOCKWISE, ROTATE_180, IMREAD_COLOR_RGB
 from random import shuffle, choice
 from numpy.random import uniform, normal
 from numpy import clip, ndarray, moveaxis
@@ -24,7 +24,7 @@ class CustomDataset(Dataset):
             augmentations: Set[Augmentations] = set(),
             sigma_range: Union[Tuple[float], None] = None,
             crop_size: Union[Tuple[int], None] = None,
-            crop_count: int = 4,
+            crop_count: int = 1,
             in_memory: bool = False
         ):
         
@@ -41,7 +41,7 @@ class CustomDataset(Dataset):
 
         for idx in range(len(data_paths)):
             names: List[Path] = sorted(list(data_paths[idx].iterdir()))
-            names = list(filter(lambda p: re.match(r"^.*[.]((jpg)|(png)|(tif))$", str(p)), names))
+            names = list(filter(lambda p: re.match(r"^.*[.]((jpg)|(png)|(tif)|(bmp))$", str(p)), names))
 
             if limits != None:
                 names = names[:limits[idx]]
@@ -65,7 +65,7 @@ class CustomDataset(Dataset):
             self.__data = []
 
             for filename in self.__filenames:
-                y = imread(filename) / 255.0
+                y = imread(filename, flags=IMREAD_COLOR_RGB) / 255.0
 
                 for _ in range(crop_count):
                     self.__data.append(y)
@@ -78,7 +78,7 @@ class CustomDataset(Dataset):
         im: ndarray
 
         if not self.__in_mem:
-            im = imread(self.__filenames[index]) / 255.0
+            im = imread(self.__filenames[index], flags=IMREAD_COLOR_RGB) / 255.0
         else:
             im = self.__data[index]
 
@@ -124,6 +124,7 @@ class CustomDataset(Dataset):
 
     
     def __len__(self):
+
         if self.__in_mem:
             return len(self.__data)
         else:
