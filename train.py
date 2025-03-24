@@ -68,8 +68,8 @@ def train(a: TrainArgs):
 
             main_loss = a.main_loss(y_pred, y)
             
-            h_grad_loss = sum(abs(a.gradient_utils.get_horizontal_gradient(x) - a.gradient_utils.get_horizontal_gradient(y)))
-            v_grad_loss = sum(abs(a.gradient_utils.get_vertical_gradient(x) - a.gradient_utils.get_vertical_gradient(y)))
+            h_grad_loss = sum(abs(a.gradient_utils.get_horizontal_gradient(y_pred) - a.gradient_utils.get_horizontal_gradient(y)))
+            v_grad_loss = sum(abs(a.gradient_utils.get_vertical_gradient(y_pred) - a.gradient_utils.get_vertical_gradient(y)))
             grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
 
             loss = main_loss + a.grad_loss_weight * grad_loss
@@ -258,7 +258,6 @@ def main(config):
     dl_train = DataLoader(
         ds_train,
         batch_size=train_batch_size,
-        # shuffle=True,
         shuffle=False,
         drop_last=True,
         num_workers=num_workers
@@ -275,13 +274,9 @@ def main(config):
     
     dl_val = DataLoader(
         ds_val,
-        batch_size=len(ds_val),
-        # batch_size=2,
-        # batch_size=len(ds_val) // num_workers,
-        # shuffle=True,
+        batch_size=len(ds_val) // num_workers,
         shuffle=False,
         drop_last=True,
-        # num_workers=8
     )
     
     model = GradNet(
