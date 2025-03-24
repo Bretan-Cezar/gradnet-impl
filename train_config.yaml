@@ -82,16 +82,16 @@ dataset:
   train_files:
     paths:
       - ./datasets/DIV2K/train
-      # - ./datasets/DIV2K/val
-      # - ./datasets/BSD/train
-      # - ./datasets/BSD/test
-      # - ./datasets/BSD/val
-      # - ./datasets/CBSD68/val
+      - ./datasets/DIV2K/val
+      - ./datasets/BSD/train
+      - ./datasets/BSD/test
+      - ./datasets/BSD/val
+      - ./datasets/CBSD68/val
   val_files:
     paths:
-      # - ./datasets/CBSD68/train
-      # - ./datasets/CBSD68/val
-      # - ./datasets/Kodak24
+      - ./datasets/CBSD68/train
+      - ./datasets/CBSD68/val
+      - ./datasets/Kodak24
       - ./datasets/McMaster
   
   train_in_memory: False
@@ -122,8 +122,8 @@ training:
   learning_rate: 1e-3
   learning_rate_decay_patience: 20
   learning_rate_decay_factor: 0.2
-  grad_loss_weight: 0.1
+  grad_loss_weight: 0.3
   epochs: 200
-  batch_size: 8
+  batch_size: 64
   ckpt_path: "./checkpoints"
-  num_workers: 8
+  num_workers: 0

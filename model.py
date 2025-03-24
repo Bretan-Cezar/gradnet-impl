@@ -194,12 +194,12 @@ class GradNet(Module):
         x_grad = self.__gradient_utils.get_gradient_magnitude(x_naive_denoised_filtered)
         
         if not self.__grad_mixup:
-            x1 = concat((x1, x_grad), dim=1)
+            x2 = concat((x1, x_grad), dim=1)     
 
         else:
-            step = (self.__grad_feature_size) // (self.__grad_replicas * 3) + 1
+            step = (self.__grad_feature_size) // (self.__grad_replicas * 3)      # >= 1
 
-            x_mixup = zeros((x1.size(0), self.__grad_feature_size, x1.size(2), x1.size(3))).to(self.__device)
+            x2 = zeros((x1.size(0), self.__grad_feature_size, x1.size(2), x1.size(3))).to(self.__device)
             
             grad_idx = np.arange(0, self.__grad_replicas*3*step, step, dtype=np.int32)
             feat_idx = sorted(list(set(np.arange(0, self.__grad_feature_size)) - set(grad_idx)))
@@ -207,11 +207,11 @@ class GradNet(Module):
             grad_idx = from_numpy(grad_idx).to(self.__device)
             feat_idx = tensor(feat_idx, dtype=int32, device=self.__device)
 
-            x_mixup[:, feat_idx, :, :] = x1
-            x_mixup[:, grad_idx, :, :] = x_grad.repeat(1, self.__grad_replicas, 1, 1)
+            x2[:, feat_idx, :, :] = x1
+            x2[:, grad_idx, :, :] = x_grad.repeat(1, self.__grad_replicas, 1, 1)
         
         # Long skip connection
-        x2 = add(self.__seq(x1), x1)
+        x2 = add(self.__seq(x2), x2)
         
         # Ultra long skip connection
         return add(self.__reconstruct_conv(x2), x)
