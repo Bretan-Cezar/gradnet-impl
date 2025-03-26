@@ -1,4 +1,4 @@
-from torch import Tensor, concat, add, mul, zeros, logical_not, from_numpy, tensor, int32
+from torch import Tensor, concat, add, mul, zeros, logical_not, from_numpy, tensor, int32, dtype
 from torch.nn import Conv2d, ReLU, Sequential, AdaptiveAvgPool2d, Sigmoid, Module
 from typing import Union, List, Tuple
 from gradients import GradientUtils
@@ -134,6 +134,7 @@ class GradNet(Module):
     def __init__(
             self,
             device,
+            precision: dtype,
             training: bool,
             init_feature_size: int = 64,
             grad_mixup: bool = False,
@@ -149,7 +150,8 @@ class GradNet(Module):
         if grad_replicas * 3 > init_feature_size:
             raise ValueError("no. dims occupied by gradient must be <= init features") 
 
-        self.__gradient_utils = GradientUtils(device)
+        self.__gradient_utils = GradientUtils(device, precision)
+        self.__precision = precision
         self.__training = training
         self.__device = device
         self.__init_feature_size = init_feature_size
@@ -199,7 +201,7 @@ class GradNet(Module):
         else:
             step = (self.__grad_feature_size) // (self.__grad_replicas * 3)      # >= 1
 
-            x2 = zeros((x1.size(0), self.__grad_feature_size, x1.size(2), x1.size(3))).to(self.__device)
+            x2 = zeros((x1.size(0), self.__grad_feature_size, x1.size(2), x1.size(3)), dtype=self.__precision).to(self.__device)
             
             grad_idx = np.arange(0, self.__grad_replicas*3*step, step, dtype=np.int32)
             feat_idx = sorted(list(set(np.arange(0, self.__grad_feature_size)) - set(grad_idx)))
