@@ -1,6 +1,7 @@
 device: cuda
 
-naive_dn: bm3d
+naive_dn: dncnn
+dncnn_checkpoint: ./checkpoints/2025-03-28T14.09.10/ckpt...
 
 model:
   init_feature_size: 64
@@ -122,29 +123,29 @@ dataset:
       rotate: True
       crop_count: 1
     
-    ./datasets/RENOIR:
-      type: real
-      ref_path: ref
-      noisy_path: noisy1
-      flip: False
-      rotate: False
-      crop_count: 4
+    #./datasets/RENOIR:
+    #  type: real
+    #  ref_path: ref
+    #  noisy_path: noisy1
+    #  flip: False
+    #  rotate: False
+    #  crop_count: 4
 
-    ./datasets/PolyU:
-      type: real
-      ref_path: ref
-      noisy_path: noisy
-      flip: False
-      rotate: False
-      crop_count: 4
+    #./datasets/PolyU:
+    #  type: real
+    #  ref_path: ref
+    #  noisy_path: noisy
+    #  flip: False
+    #  rotate: False
+    #  crop_count: 4
 
-    ./datasets/SIDD:
-      type: real
-      ref_path: ref
-      noisy_path: noisy
-      flip: False
-      rotate: False
-      crop_count: 4
+    #./datasets/SIDD:
+    #  type: real
+    #  ref_path: ref
+    #  noisy_path: noisy
+    #  flip: False
+    #  rotate: False
+    #  crop_count: 4
     
   val_files:
     ./datasets/CBSD68/train:
@@ -197,7 +198,7 @@ training:
   learning_rate_decay_factor: 0.2
   grad_loss_weight: 0.1
   epochs: 200
-  batch_size: 20
+  batch_size: 128
   ckpt_path: "./checkpoints"
   num_workers: 8
   precision: 32

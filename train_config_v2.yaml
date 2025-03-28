@@ -1,5 +1,7 @@
 device: cuda
 
+naive_dn: bm3d
+
 model:
   init_feature_size: 64
   grad_mixup: True

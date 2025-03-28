@@ -1,84 +1,85 @@
 device: cuda
 
-naive_dn: bm3d
+naive_dn: dncnn
+dncnn_checkpoint: ./checkpoints/2025-03-28T14.09.10/ckpt...
 
 model:
   init_feature_size: 64
-  grad_mixup: False
-  grad_replicas: 1
+  grad_mixup: True
+  grad_replicas: 12
   no_res_modules: 4
   res_modules_units_channels:
     1:
       1:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       2:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       3:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       4:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
     
     2:
       1:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       2:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       3:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       4:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
 
     3:
       1:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       2:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       3:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       4:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
 
     4:
       1:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       2:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       3:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
       4:
-        - 67
-        - 67
-        - 67
+        - 100
+        - 100
+        - 100
 
 dataset:
   train_files:
@@ -194,13 +195,13 @@ dataset:
 training:
   learning_rate: 1e-3
   learning_rate_decay_patience: 5
-  learning_rate_decay_factor: 0.2
+  learning_rate_decay_factor: 0.1
   grad_loss_weight: 0.1
   epochs: 200
-  batch_size: 20
+  batch_size: 64
   ckpt_path: "./checkpoints"
   num_workers: 8
   precision: 32
 
 validation:
-  batch_size: 16
+  batch_size: 11

@@ -1,12 +1,17 @@
 device: cuda
 
-model_path: "./checkpoints/2025-03-24T18.03.13/ckpt-1-41.66-0.0027-2025-03-24T19.03.37.pt"
+dncnn_path: './checkpoints/2025-03-28T14.09.10/ckpt-41-21.31-0.0000-2025-03-28T16.15.50.pt'
+gradnet_bm3d_path: "./checkpoints/"
+gradnet_dncnn_path: "./checkpoints/"
 
 files:
   input_paths:
-    - "./datasets/Kodak24"
+    ./datasets/Kodak24:
+      type: awgn
+      sigma: 0.058
+    
+    #./datasets/DND:
+    #  type: real
+    #  noisy_path: noisy
   
   output_root_path: "./resources/inference"
-
-inference:
-  bm3d_sigma: 0.141
