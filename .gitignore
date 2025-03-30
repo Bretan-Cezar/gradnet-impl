@@ -178,6 +178,11 @@ cython_debug/
 
 # Checkpoints
 /checkpoints
+/checkpoints_dncnn
 
 # Resources
 /resources
+
+# Documents
+*.pptx
+*.docx

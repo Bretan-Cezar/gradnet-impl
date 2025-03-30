@@ -1,14 +1,16 @@
-from torch import Tensor, pow, sqrt, ones, dtype
+from torch import Tensor, pow, sqrt, ones, dtype, tensor, float32
+import numpy as np
+import torch
 from torch.nn.functional import conv2d
 
 class GradientUtils:
     def __init__(self, device, precision: dtype):
-        self.__eps = 1e-5
+        self.__eps = 0.0
 
-        self.__sobel_horizontal = Tensor([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]]).repeat(3,1,1,1) + self.__eps
+        self.__sobel_horizontal = tensor([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]], dtype=precision).repeat(3,1,1,1) + self.__eps
         self.__sobel_horizontal = self.__sobel_horizontal.to(precision).to(device)
 
-        self.__sobel_vertical = Tensor([[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]]).repeat(3,1,1,1) + self.__eps
+        self.__sobel_vertical = tensor([[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]], dtype=precision).repeat(3,1,1,1) + self.__eps
         self.__sobel_vertical = self.__sobel_vertical.to(precision).to(device)
 
     def get_horizontal_gradient(self, x: Tensor):

@@ -77,7 +77,7 @@ def train(a: TrainArgs):
         
         train_loss_mean = train_loss_mean / no_samples
 
-        print(f"Main loss: {train_loss_mean}")
+        print(f"Loss: {train_loss_mean}")
         
         a.summary_writer.add_scalar("train / Loss", train_loss_mean, epoch)
 
@@ -97,7 +97,7 @@ def train(a: TrainArgs):
 
             save(
                 a.model,
-                a.ckpt_path / f"ckpt-{epoch}-{val_psnr_mean:.2f}-{train_loss_mean:.4f}-{dt}.pt"
+                a.ckpt_path / f"ckpt-{epoch}-{val_psnr_mean:.2f}-{train_loss_mean:.6f}-{dt}.pt"
             )
 
             print("Checkpoint saved!")
@@ -124,21 +124,20 @@ def validate(a: ValidateArgs):
 
         no_samples = 0
 
-        for (x, _, _) in tqdm(a.dl_test, desc=f"Running inference on validation data..."):
+        for (x, _, y) in tqdm(a.dl_test, desc=f"Running inference on validation data..."):
             
             x: Tensor = x.to(a.torch_precision).to(a.device)
             
             y_pred: np.ndarray = a.model(x).cpu().numpy()
-            x: np.ndarray = x.cpu().numpy()
             
-            x = (np.uint8(255) * np.clip(x, 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
+            y = (np.uint8(255) * np.clip(y.numpy(), 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
             y_pred = (np.uint8(255) * np.clip(y_pred, 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
             
             for i in range(y_pred.shape[0]):
-                x_sample = x[i, :, :, :]
+                y_sample = y[i, :, :, :]
                 y_pred_sample = y_pred[i, :, :, :]
 
-                psnr_mean += PSNR(y_pred_sample, x_sample)
+                psnr_mean += PSNR(y_pred_sample, y_sample)
                 no_samples += 1
         
         psnr_mean = psnr_mean / no_samples
@@ -206,16 +205,15 @@ def main(config):
         train_data_info,
         split='train',
         crop_size=crop_size,
-        naive_dn=None,
-        device=None
+        naive_dn=None
     )
 
     dl_train = DataLoader(
         ds_train,
-        batch_size=1,
+        batch_size=train_batch_size,
         shuffle=True,
         drop_last=False,
-        num_workers=0
+        num_workers=num_workers
     )
 
     ds_val = CustomDataset(
@@ -223,8 +221,7 @@ def main(config):
         val_data_info,
         split='val',
         crop_size=crop_size,
-        naive_dn=None,
-        device=None
+        naive_dn=None
     )
     
     dl_val = DataLoader(
@@ -236,11 +233,6 @@ def main(config):
     )
     
     model = DnCNN(3, 3)
-
-    for (x, _, y) in dl_train:
-        figure()
-        imshow(x.squeeze(0).numpy().moveaxis(0, -1))
-        show()
 
     model = model.to(device)
     

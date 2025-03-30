@@ -20,6 +20,7 @@ from dncnn import DnCNN
 from bm3d import bm3d_rgb
 from typing import Union
 from types import FunctionType
+from matplotlib.pyplot import figure, imshow, show, subplot
  
 @dataclass
 class TrainArgs:
@@ -46,6 +47,7 @@ class TrainArgs:
 class ValidateArgs:
     torch_precision: dtype
     np_precision: type
+    naive_dn: Union[DnCNN, FunctionType]
     model: GradNet
     dl_test: DataLoader
     device: str
@@ -70,24 +72,25 @@ def train(a: TrainArgs):
             
             x: Tensor = x.to(a.torch_precision).to(a.device)
 
-            x_naive_dn: Tensor
+            # Should be a copy of x if using DnCNN, a denoised version using BM3D otherwise
+            x_naive_dn: Tensor = x_naive_dn.to(a.torch_precision).to(a.device)
 
-            if a.naive_dn == bm3d_rgb:
-                x_naive_dn = x_naive_dn.to(a.torch_precision).to(a.device)
-            else:
+            if isinstance(a.naive_dn, DnCNN):
                 with no_grad():
-                    x_naive_dn = a.naive_dn(x)
+                    x_naive_dn = a.naive_dn(x_naive_dn)
 
             y: Tensor = y.to(a.torch_precision).to(a.device)
             
-            y_pred = a.model(x, x_naive_dn)
+            y_pred: Tensor = a.model(x, x_naive_dn)
 
-            main_loss = a.main_loss(y_pred, y)
-            
             # The paper doesn't state the usage of a mean, but the grad loss reaches 10^5 if using a sum instead
+            # MUST BE COMPUTED BEFORE MAIN LOSS
             h_grad_loss = mean(abs(a.gradient_utils.get_horizontal_gradient(y_pred) - a.gradient_utils.get_horizontal_gradient(y)))
             v_grad_loss = mean(abs(a.gradient_utils.get_vertical_gradient(y_pred) - a.gradient_utils.get_vertical_gradient(y)))
-            grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
+            grad_loss = h_grad_loss + v_grad_loss
+            # grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
+
+            main_loss = a.main_loss(y_pred, y)
 
             loss = main_loss + a.grad_loss_weight * grad_loss
             
@@ -110,7 +113,7 @@ def train(a: TrainArgs):
         cuda.empty_cache()
 
         val_psnr_mean = validate(
-            ValidateArgs(a.torch_precision, a.np_precision, a.model, a.dl_test, a.device)
+            ValidateArgs(a.torch_precision, a.np_precision, a.naive_dn, a.model, a.dl_test, a.device)
         )
 
         a.summary_writer.add_scalar("val / Average PSNR", val_psnr_mean, epoch)
@@ -150,22 +153,26 @@ def validate(a: ValidateArgs):
 
         no_samples = 0
 
-        for (x, x_naive, _) in tqdm(a.dl_test, desc=f"Running inference on validation data..."):
+        for (x, x_naive_dn, y) in tqdm(a.dl_test, desc=f"Running inference on validation data..."):
             
             x: Tensor = x.to(a.torch_precision).to(a.device)
-            x_naive: Tensor = x_naive.to(a.torch_precision).to(a.device)
+
+            # Should be a copy of x if using DnCNN
+            x_naive_dn: Tensor = x_naive_dn.to(a.torch_precision).to(a.device)
+
+            if isinstance(a.naive_dn, DnCNN):
+                x_naive_dn = a.naive_dn(x)
             
-            y_pred: np.ndarray = a.model(x, x_naive).cpu().numpy()
-            x: np.ndarray = x.cpu().numpy()
+            y_pred: np.ndarray = a.model(x, x_naive_dn).cpu().numpy()
             
-            x = (np.uint8(255) * np.clip(x, 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
+            y = (np.uint8(255) * np.clip(y.numpy(), 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
             y_pred = (np.uint8(255) * np.clip(y_pred, 0.0, 1.0, dtype=a.np_precision)).astype(np.uint8)
             
             for i in range(y_pred.shape[0]):
-                x_sample = x[i, :, :, :]
+                y_sample = y[i, :, :, :]
                 y_pred_sample = y_pred[i, :, :, :]
 
-                psnr_mean += PSNR(y_pred_sample, x_sample)
+                psnr_mean += PSNR(y_pred_sample, y_sample)
                 no_samples += 1
         
         psnr_mean = psnr_mean / no_samples
@@ -245,18 +252,18 @@ def main(config):
     if naive_dn_type == 'bm3d':
         naive_dn = bm3d_rgb
     elif naive_dn_type == 'dncnn':
-        ckpt_path = Path(config['dncnn_checkpoint'])
+        dncnn_ckpt_path = Path(config['dncnn_checkpoint'])
 
-        with open(ckpt_path, 'rb') as f:
-            naive_dn: DnCNN = load(f)
-            naive_dn.to(device)   
+        with open(dncnn_ckpt_path, 'rb') as f:
+            naive_dn: DnCNN = load(f, weights_only=False).to(device).eval()
+            
 
     ds_train = CustomDataset(
         np_precision,
         train_data_info,
         split='train',
         crop_size=crop_size,
-        naive_dn=naive_dn
+        naive_dn=num_workers
     )
 
     dl_train = DataLoader(
@@ -291,16 +298,41 @@ def main(config):
         grad_mixup=grad_mixup,
         grad_replicas=grad_replicas,
         no_res_modules=no_res_modules,
-        res_modules_units_channels=res_modules_units_channels,
-        naive_dn=naive_dn
+        res_modules_units_channels=res_modules_units_channels
     )
 
+        
     model = model.to(device)
     
+    # for (x, x_naive_dn, y) in dl_train:
+        
+    #     x: Tensor = x.to(torch_precision).to(device)
+
+    #     # Should be a copy of x if using DnCNN
+    #     x_naive_dn: Tensor = x_naive_dn.to(torch_precision).to(device)
+
+    #     if isinstance(naive_dn, DnCNN):
+    #         with no_grad():
+    #             x_naive_dn: Tensor = naive_dn(x_naive_dn)
+
+    #             print(x_naive_dn)
+                
+    #             subplot(1,3,1)
+    #             imshow(np.moveaxis(x.detach().cpu().numpy()[0, :, :, :], 0, -1))
+    #             subplot(1,3,2)
+    #             imshow(np.moveaxis(x_naive_dn.cpu().numpy()[0, :, :, :], 0, -1))
+    #             subplot(1,3,3)
+    #             imshow(np.moveaxis(y.numpy()[0, :, :, :], 0, -1))
+    #             show()
+        
+
+                
+    # exit()
+                
     if precision == 16:
         model.half()
 
-    main_loss = L1Loss()
+    main_loss = L1Loss().to(device)
     optimizer = Adam(model.parameters(), learning_rate)
 
     summary_writer = SummaryWriter(ckpt_path)
@@ -332,7 +364,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    with open('train_config_v2_no_grad_mixup.yaml', 'rt') as f:
+    with open('train_config_v3.yaml', 'rt') as f:
         config = safe_load(f)
 
     main(config)

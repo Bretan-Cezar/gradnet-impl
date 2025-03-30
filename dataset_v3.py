@@ -41,10 +41,10 @@ class CustomDataset(Dataset):
     ):
     
         self.__precision = precision
-        self.__eps = precision(0.0)
+        self.__eps = precision(1e-8)
         self.__data: List[ImageData] = []
         self.__crop_size = crop_size
-        self.__split = split
+        # self.__split = split
         self.__rotations = [ROTATE_180, ROTATE_90_CLOCKWISE, ROTATE_90_COUNTERCLOCKWISE]   
         self.__flips = [-1, 0, 1]
         self.__ycbcr = array([[0.299, 0.587, 0.114], [-0.168737, -0.331263, 0.5], [0.5, -0.418688, -0.081313]], dtype=self.__precision)
@@ -66,28 +66,21 @@ class CustomDataset(Dataset):
                     list(noisy_path.iterdir())
                 )))
 
-                if self.__split == 'train':
-                    ref_path: Path = base_path / v["ref_path"]
+                ref_path: Path = base_path / v["ref_path"]
 
-                    # Assuming all files pair properly when lexicographically sorted...
-                    ref_filenames = sorted(list(filter(
-                        lambda p: re.match(r"^.*[.]((jpg)|(png)|(tif)|(bmp)|(PNG)|(JPG))$", str(p)), 
-                        list(ref_path.iterdir())
-                    )))
+                # Assuming all files pair properly when lexicographically sorted...
+                ref_filenames = sorted(list(filter(
+                    lambda p: re.match(r"^.*[.]((jpg)|(png)|(tif)|(bmp)|(PNG)|(JPG))$", str(p)), 
+                    list(ref_path.iterdir())
+                )))
 
-                    assert len(noisy_filenames) == len(ref_filenames)
+                assert len(noisy_filenames) == len(ref_filenames)
 
                 no_samples = len(noisy_filenames)
                 
                 for idx in range(no_samples):
                     noisy_fn: Path = noisy_filenames[idx]
-                    
-                    ref_fn: Path
-
-                    if self.__split == 'train':
-                        ref_fn = noisy_filenames[idx]
-                    else:
-                        ref_fn = None
+                    ref_fn: Path = ref_filenames[idx]
 
                     new_data = ImageData(noisy_fn, NoiseType.REAL, None, None, ref_fn, flip, rotate)
 
@@ -116,6 +109,9 @@ class CustomDataset(Dataset):
 
         im_full: ndarray = self.__precision(imread(data.original_image, flags=IMREAD_COLOR_RGB).astype(self.__precision) / self.__precision(255.0))
 
+        crop_coords: Tuple[int, int]
+        sample: ndarray
+        
         if self.__crop_size != None:
             
             if self.__naive_dn == bm3d_rgb:
@@ -125,8 +121,7 @@ class CustomDataset(Dataset):
                     crop_coords = (int(uniform(0, im_full.shape[0]-self.__crop_size[0])), int(uniform(0, im_full.shape[1]-self.__crop_size[1])))
                     sample = im_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :]
 
-                    o = sample.copy().reshape([sample.shape[0] * sample.shape[1], 3]) @ self.__ycbcr.T
-
+                    o = array(sample).reshape([sample.shape[0] * sample.shape[1], 3]) @ self.__ycbcr.T
                     o_rng = o.max(axis=0) - o.min(axis=0)
                     
                     if all(o_rng > self.__eps):
@@ -135,14 +130,15 @@ class CustomDataset(Dataset):
                     del o
                     del o_rng
 
-                    print(f"Suspicious image detected: {str(data.original_image)}")
+                    # print(f"Suspicious image detected: {str(data.original_image)}")
 
                 del im_full
 
             else:
 
                 crop_coords = (int(uniform(0, im_full.shape[0]-self.__crop_size[0])), int(uniform(0, im_full.shape[1]-self.__crop_size[1])))
-                sample = im_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :]
+                sample = array(im_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :])
+                del im_full
             
         else:
             sample = im_full
@@ -155,23 +151,19 @@ class CustomDataset(Dataset):
             sigma = self.__precision(uniform(data.sigma_min, data.sigma_max, y.shape))
             noise = self.__precision(normal(0.0, sigma, y.shape))
             
-            x = clip(y + noise, 0.0, 1.0, dtype=self.__precision)
+            x = clip(array(y) + noise, 0.0, 1.0, dtype=self.__precision)
 
             if data.flip:
                 rot = choice(self.__rotations)
 
                 rotate(x, rot, x)
-
-                if self.__split == 'train':
-                    rotate(y, rot, y)
+                rotate(y, rot, y)
             
             if data.rotate:
                 fl = choice(self.__flips)
 
                 flip(x, fl, x)
-
-                if self.__split == 'train':
-                    flip(y, fl, y)
+                flip(y, fl, y)
 
             
             if (self.__naive_dn == bm3d_rgb):
@@ -182,20 +174,11 @@ class CustomDataset(Dataset):
             else:
                 
                 # If using DnCNN as the naive denoise block, pass the entire batch 
-                # in the training loop for performance and ignore the 2nd element
-                x_naive_dn = empty((3, self.__crop_size[0], self.__crop_size[1]), dtype=self.__precision)
+                # in the training loop for performance, returns a copy of x as the 2nd element
+                x_naive_dn = moveaxis(array(x), -1, 0) + self.__eps
 
             x = moveaxis(x, -1, 0) + self.__eps
-
-            if self.__split == 'train':
-                y = moveaxis(y, -1, 0) + self.__eps
-
-            else:
-
-                # Ground truth image not necessary on validation runs,
-                # since PSNR between source and prediction is measured.
-                # 3rd element can be ignored in this case.
-                y = empty((3, self.__crop_size[0], self.__crop_size[1]), dtype=self.__precision)
+            y = moveaxis(y, -1, 0) + self.__eps
 
             return (x, x_naive_dn, y)
         
@@ -205,48 +188,40 @@ class CustomDataset(Dataset):
 
             y: ndarray
 
-            # reference images are only used during training
-            if self.__split == 'train':
-                y_full: ndarray = self.__precision(imread(data.ref_image, flags=IMREAD_COLOR_RGB).astype(self.__precision) / self.__precision(255.0))
+            y_full: ndarray = self.__precision(imread(data.ref_image, flags=IMREAD_COLOR_RGB).astype(self.__precision) / self.__precision(255.0))
 
-                if self.__crop_size != None:
-                    y = y_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :]
-                    del y_full
+            if self.__crop_size != None:
+                y = array(y_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :])
+                del y_full
                     
-                else:
-                    y = y_full
-
             else:
-                y = empty((3, self.__crop_size[0], self.__crop_size[1]), dtype=self.__precision)
+                y = y_full
 
             if data.flip:
                 rot = choice(self.__rotations)
 
                 rotate(x, rot, x)
-                
-                if self.__split == "train":
-                    rotate(y, rot, y)
+                rotate(y, rot, y)
             
             if data.rotate:
                 fl = choice(self.__flips)
 
                 flip(x, fl, x)
-
-                if self.__split == "train":
-                    flip(y, fl, y)
+                flip(y, fl, y)
 
             if (self.__naive_dn == bm3d_rgb):
-                # estimating natural noise std per channel with skimage, as it is not known
-                x_naive_dn = clip(bm3d_rgb(x, self.__precision(estimate_sigma(x, channel_axis=2))), 0.0, 1.0, dtype=self.__precision)
+                # estimating natural noise std per channel with skimage.restoration.estimate_sigma, as it is not known
+                x_naive_dn = clip(bm3d_rgb(array(x), self.__precision(5.0*array(estimate_sigma(x, channel_axis=2)))), 0.0, 1.0, dtype=self.__precision)
                 x_naive_dn = moveaxis(x_naive_dn, -1, 0) + self.__eps
             
             else:
-                x_naive_dn = empty((3, self.__crop_size[0], self.__crop_size[1]), dtype=self.__precision)
+
+                # If using DnCNN as the naive denoise block, pass the entire batch 
+                # in the training loop for performance, returns a copy of x as the 2nd element
+                x_naive_dn = moveaxis(array(x), -1, 0)
 
             x = moveaxis(x, -1, 0) + self.__eps
-
-            if self.__split == "train":
-                y = moveaxis(y, -1, 0) + self.__eps
+            y = moveaxis(y, -1, 0) + self.__eps
 
             return (x, x_naive_dn, y)
                 

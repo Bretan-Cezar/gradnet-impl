@@ -178,7 +178,8 @@ class GradNet(Module):
 
         self.__seq = Sequential(*res_modules)
 
-        self.__reconstruct_conv = Conv2d(self.__grad_feature_size, 3, kernel_size=1, padding=0)
+        # self.__reconstruct_conv = Conv2d(self.__grad_feature_size, 3, kernel_size=1, padding=0)
+        self.__reconstruct_conv = Conv2d(self.__grad_feature_size, 3, kernel_size=3, padding=1)
 
 
     @property

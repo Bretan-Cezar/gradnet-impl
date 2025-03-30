@@ -1,85 +1,5 @@
 device: cuda
 
-naive_dn: bm3d
-
-model:
-  init_feature_size: 64
-  grad_mixup: False
-  grad_replicas: 1
-  no_res_modules: 4
-  res_modules_units_channels:
-    1:
-      1:
-        - 67
-        - 67
-        - 67
-      2:
-        - 67
-        - 67
-        - 67
-      3:
-        - 67
-        - 67
-        - 67
-      4:
-        - 67
-        - 67
-        - 67
-    
-    2:
-      1:
-        - 67
-        - 67
-        - 67
-      2:
-        - 67
-        - 67
-        - 67
-      3:
-        - 67
-        - 67
-        - 67
-      4:
-        - 67
-        - 67
-        - 67
-
-    3:
-      1:
-        - 67
-        - 67
-        - 67
-      2:
-        - 67
-        - 67
-        - 67
-      3:
-        - 67
-        - 67
-        - 67
-      4:
-        - 67
-        - 67
-        - 67
-
-    4:
-      1:
-        - 67
-        - 67
-        - 67
-      2:
-        - 67
-        - 67
-        - 67
-      3:
-        - 67
-        - 67
-        - 67
-      4:
-        - 67
-        - 67
-        - 67
-
 dataset:
   train_files:
     ./datasets/DIV2K/train:
@@ -179,13 +99,21 @@ dataset:
       rotate: False
       crop_count: 1
 
-    ./datasets/DND:
+    ./datasets/SIDD:
       type: real
-      ref_path: null
+      ref_path: ref
       noisy_path: noisy
       flip: False
       rotate: False
       crop_count: 1
+
+    # ./datasets/DND:
+    #   type: real
+    #   ref_path: null
+    #   noisy_path: noisy
+    #   flip: False
+    #   rotate: False
+    #   crop_count: 1
   
   crop:
     height: 80
@@ -194,13 +122,13 @@ dataset:
 training:
   learning_rate: 1e-3
   learning_rate_decay_patience: 5
-  learning_rate_decay_factor: 0.2
+  learning_rate_decay_factor: 0.1
   grad_loss_weight: 0.1
   epochs: 200
-  batch_size: 20
-  ckpt_path: "./checkpoints"
-  num_workers: 8
+  batch_size: 128
+  ckpt_path: "./checkpoints_dncnn"
+  num_workers: 7
   precision: 32
 
 validation:
-  batch_size: 16
+  batch_size: 32

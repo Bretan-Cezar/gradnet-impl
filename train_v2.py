@@ -75,7 +75,8 @@ def train(a: TrainArgs):
             # The paper doesn't state the usage of a mean, but the grad loss reaches 10^5 if using a sum instead
             h_grad_loss = mean(abs(a.gradient_utils.get_horizontal_gradient(y_pred) - a.gradient_utils.get_horizontal_gradient(y)))
             v_grad_loss = mean(abs(a.gradient_utils.get_vertical_gradient(y_pred) - a.gradient_utils.get_vertical_gradient(y)))
-            grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
+            grad_loss = h_grad_loss + v_grad_loss
+            # grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
 
             loss = main_loss + a.grad_loss_weight * grad_loss
             
@@ -316,7 +317,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    with open('train_config_v2_no_grad_mixup.yaml', 'rt') as f:
+    with open('train_config_v2.yaml', 'rt') as f:
         config = safe_load(f)
 
     main(config)
