@@ -263,7 +263,7 @@ def main(config):
         train_data_info,
         split='train',
         crop_size=crop_size,
-        naive_dn=num_workers
+        naive_dn=naive_dn
     )
 
     dl_train = DataLoader(
@@ -300,34 +300,8 @@ def main(config):
         no_res_modules=no_res_modules,
         res_modules_units_channels=res_modules_units_channels
     )
-
-        
+     
     model = model.to(device)
-    
-    # for (x, x_naive_dn, y) in dl_train:
-        
-    #     x: Tensor = x.to(torch_precision).to(device)
-
-    #     # Should be a copy of x if using DnCNN
-    #     x_naive_dn: Tensor = x_naive_dn.to(torch_precision).to(device)
-
-    #     if isinstance(naive_dn, DnCNN):
-    #         with no_grad():
-    #             x_naive_dn: Tensor = naive_dn(x_naive_dn)
-
-    #             print(x_naive_dn)
-                
-    #             subplot(1,3,1)
-    #             imshow(np.moveaxis(x.detach().cpu().numpy()[0, :, :, :], 0, -1))
-    #             subplot(1,3,2)
-    #             imshow(np.moveaxis(x_naive_dn.cpu().numpy()[0, :, :, :], 0, -1))
-    #             subplot(1,3,3)
-    #             imshow(np.moveaxis(y.numpy()[0, :, :, :], 0, -1))
-    #             show()
-        
-
-                
-    # exit()
                 
     if precision == 16:
         model.half()
@@ -364,7 +338,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    with open('train_config_v3.yaml', 'rt') as f:
+    with open('train_config_v3_no_grad_mixup.yaml', 'rt') as f:
         config = safe_load(f)
 
     main(config)

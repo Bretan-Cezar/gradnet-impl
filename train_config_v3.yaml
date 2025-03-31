@@ -187,14 +187,6 @@ dataset:
       flip: False
       rotate: False
       crop_count: 1
-
-    # ./datasets/DND:
-    #   type: real
-    #   ref_path: null
-    #   noisy_path: noisy
-    #   flip: False
-    #   rotate: False
-    #   crop_count: 1
   
   crop:
     height: 80

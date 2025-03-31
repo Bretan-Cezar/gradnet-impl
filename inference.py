@@ -42,7 +42,6 @@ def main(config):
     dncnn_path = Path(config['dncnn_path'])
     # gradnet_bm3d_path = Path(config["gradnet_bm3d_path"])
     gradnet_dncnn_path = Path(config["gradnet_dncnn_path"])
-    # gradnet_mixup_bm3d_path = Path(config["gradnet_mixup_bm3d_path"])
     gradnet_mixup_dncnn_path = Path(config["gradnet_mixup_dncnn_path"])
 
     dncnn: DnCNN
@@ -60,11 +59,6 @@ def main(config):
         gradnet_dncnn = load(f)
         gradnet_dncnn = gradnet_dncnn.to(device)
     
-    # gradnet_mixup_bm3d: GradNet
-    # with open(gradnet_mixup_bm3d_path, 'rb') as f:
-    #     gradnet_mixup_bm3d = load(f)
-    #     gradnet_mixup_bm3d = gradnet_mixup_bm3d.to(device)
-
     gradnet_mixup_dncnn: GradNet
     with open(gradnet_mixup_dncnn_path, 'rb') as f:
         gradnet_mixup_dncnn = load(f)
@@ -93,11 +87,11 @@ def main(config):
         tt.header([
             "Filename", 
             "BM3D PSNR", 
-            "DnCNN PSNR", 
-            "GradNet + BM3D gradients PSNR", 
+            "DnCNN PSNR",
             "GradNet + DnCNN gradients PSNR", 
-            "GradNet with grad mixup + BM3D gradients PSNR", 
-            "GradNet with grad mixup + DnCNN gradients PSNR"
+            "GradNet with grad mixup + DnCNN gradients PSNR",
+            "GradNet with alt MSKResNet structure + DnCNN gradients PSNR",
+            "GradNet + BM3D gradients PSNR"
         ])
 
         bm3d_psnrs = []
@@ -159,7 +153,6 @@ def main(config):
 
                 bm3d_psnr = PSNR(x_bm3d_dn, y)
                 # gradnet_bm3d_psnr = PSNR(y_pred_bm3d, y)
-
                 dncnn_psnr = PSNR(x_dncnn_dn, y)
                 gradnet_dncnn_psnr = PSNR(y_pred_dncnn, y)
                 gradnet_mixup_dncnn_psnr = PSNR(y_pred_mixup_dncnn, y)
@@ -182,20 +175,23 @@ def main(config):
                 
                 imsave(output_data_root_path / "noisy" / ref_filenames[idx].name, x)
                 imsave(output_data_root_path / "bm3d" / ref_filenames[idx].name, x_bm3d_dn)
-                # imsave(output_data_root_path / "gradnet_bm3d" / noisy_filenames[idx].name, y_pred_bm3d)
                 imsave(output_data_root_path / "dncnn" / ref_filenames[idx].name, x_dncnn_dn)
                 imsave(output_data_root_path / "gradnet_dncnn" / ref_filenames[idx].name, y_pred_dncnn)
                 imsave(output_data_root_path / "gradnet_mixup_dncnn" / ref_filenames[idx].name, y_pred_mixup_dncnn)
+                # imsave(output_data_root_path / "gradnet_alt_dncnn" / ref_filenames[idx].name, y_pred_mixup_dncnn)
+                # imsave(output_data_root_path / "gradnet_bm3d" / noisy_filenames[idx].name, y_pred_bm3d)
         
         tt.add_row([
             "AVG",
             f"{mean(array(bm3d_psnrs)):.3f}",
             f"{mean(array(dncnn_psnrs)):.3f}",
-            "",
-            # f"{mean(array(gradnet_bm3d_psnrs)):.3f}", 
             f"{mean(array(gradnet_dncnn_psnrs)):.3f}",
             '',
-            f"{mean(array(gradnet_mixup_dncnn_psnrs)):.3f}"
+            f"{mean(array(gradnet_mixup_dncnn_psnrs)):.3f}",
+            '',
+            # f"{mean(array(gradnet_alt_dncnn_psnrs)):.3f}", 
+            "",
+            # f"{mean(array(gradnet_bm3d_psnrs)):.3f}", 
         ])
 
         print(tt.draw())
