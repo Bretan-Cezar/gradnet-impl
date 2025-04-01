@@ -7,9 +7,9 @@ from torch import load
 from typing import List
 import re
 from torch import Tensor, no_grad, tensor
-from numpy import clip, ndarray, uint8, array, moveaxis, mean
+from numpy import clip, ndarray, uint8, array, mean
 from tqdm import tqdm
-from matplotlib.pyplot import figure, subplot, show, imshow, imsave
+from matplotlib.pyplot import imsave
 from cv2 import PSNR, imread, IMREAD_COLOR_RGB
 from skimage.restoration import estimate_sigma
 from texttable import Texttable
@@ -36,11 +36,11 @@ def main(config):
     (output_data_root_path / "gradnet_bm3d").mkdir(666, exist_ok=True)
     (output_data_root_path / "dncnn").mkdir(666, exist_ok=True)
     (output_data_root_path / "gradnet_dncnn").mkdir(666, exist_ok=True)
-    (output_data_root_path / "gradnet_mixup_bm3d").mkdir(666, exist_ok=True)
     (output_data_root_path / "gradnet_mixup_dncnn").mkdir(666, exist_ok=True)
+    (output_data_root_path / "last").mkdir(666, exist_ok=True)
 
     dncnn_path = Path(config['dncnn_path'])
-    # gradnet_bm3d_path = Path(config["gradnet_bm3d_path"])
+    gradnet_bm3d_path = Path(config["gradnet_bm3d_path"])
     gradnet_dncnn_path = Path(config["gradnet_dncnn_path"])
     gradnet_mixup_dncnn_path = Path(config["gradnet_mixup_dncnn_path"])
 
@@ -49,10 +49,10 @@ def main(config):
         dncnn = load(f, weights_only=False)
         dncnn = dncnn.to(device)
     
-    # gradnet_bm3d: GradNet
-    # with open(gradnet_bm3d_path, 'rb') as f:
-    #     gradnet_bm3d = load(f)
-    #     gradnet_bm3d = gradnet_bm3d.to(device)
+    gradnet_bm3d: GradNet
+    with open(gradnet_bm3d_path, 'rb') as f:
+        gradnet_bm3d = load(f)
+        gradnet_bm3d = gradnet_bm3d.to(device)
     
     gradnet_dncnn: GradNet
     with open(gradnet_dncnn_path, 'rb') as f:
@@ -84,13 +84,14 @@ def main(config):
             assert len(noisy_filenames) == len(ref_filenames)
 
         tt = Texttable()
+
         tt.header([
             "Filename", 
             "BM3D PSNR", 
             "DnCNN PSNR",
             "GradNet + DnCNN gradients PSNR", 
             "GradNet with grad mixup + DnCNN gradients PSNR",
-            "GradNet with alt MSKResNet structure + DnCNN gradients PSNR",
+            "GradNet + DnCNN gradients, with BM3D gradients on inference PSNR", # calling this "last" because I'm done with this
             "GradNet + BM3D gradients PSNR"
         ])
 
@@ -98,6 +99,8 @@ def main(config):
         dncnn_psnrs = []
         gradnet_dncnn_psnrs = []
         gradnet_mixup_dncnn_psnrs = []
+        gradnet_bm3d_psnrs = []
+        last_psnrs = []
 
         for idx in tqdm(range(len(ref_filenames)), desc=f"Running inference on files from {str(dir)}..."):
             y: ndarray = (imread(ref_filenames[idx], flags=IMREAD_COLOR_RGB) / 255.0).astype(float32)
@@ -120,23 +123,25 @@ def main(config):
                 x_bm3d_dn = clip(bm3d_rgb(x, 5.0*array(estimate_sigma(x, channel_axis=2))), 0.0, 1.0, dtype=float32)
 
             x_dncnn_dn: ndarray
-            # y_pred_bm3d: ndarray
+            y_pred_bm3d: ndarray
 
             with no_grad():
                 
                 x_t = tensor(x).moveaxis(-1, 0).unsqueeze(0).to(device)
 
-                # x_bm3d_dn_t = tensor(x_bm3d_dn).moveaxis(-1, 0).unsqueeze(0).to(device)
+                x_bm3d_dn_t = tensor(x_bm3d_dn).moveaxis(-1, 0).unsqueeze(0).to(device)
                 x_dncnn_dn: Tensor = dncnn(x_t)
                 
-                # y_pred_bm3d: Tensor = gradnet_bm3d(x, x_bm3d_dn_t)
+                y_pred_bm3d: Tensor = gradnet_bm3d(x_t, x_bm3d_dn_t)
                 y_pred_dncnn: Tensor = gradnet_dncnn(x_t, x_dncnn_dn)
                 y_pred_mixup_dncnn: Tensor = gradnet_mixup_dncnn(x_t, x_dncnn_dn)
+                y_last: Tensor = gradnet_dncnn(x_t, x_bm3d_dn_t)
                 
                 x_dncnn_dn: ndarray = x_dncnn_dn.cpu().squeeze(0).moveaxis(0, -1).numpy()
-                # y_pred_bm3d = y_pred_bm3d.cpu().squeeze(0).moveaxis(0, -1).numpy()
+                y_pred_bm3d = y_pred_bm3d.cpu().squeeze(0).moveaxis(0, -1).numpy()
                 y_pred_dncnn = y_pred_dncnn.cpu().squeeze(0).moveaxis(0, -1).numpy()
                 y_pred_mixup_dncnn = y_pred_mixup_dncnn.cpu().squeeze(0).moveaxis(0, -1).numpy()
+                y_last = y_last.cpu().squeeze(0).moveaxis(0, -1).numpy()
 
                 x: ndarray = (x * 255.0).astype(uint8)
                 y: ndarray = (y * 255.0).astype(uint8)
@@ -145,53 +150,54 @@ def main(config):
 
                 x_dncnn_dn = (uint8(255) * clip(x_dncnn_dn, 0.0, 1.0)).astype(uint8)
                 
-                # y_pred_bm3d: ndarray = (uint8(255) * y_pred_bm3d.clip(0.0, 1.0)).astype(uint8)
+                y_pred_bm3d: ndarray = (uint8(255) * y_pred_bm3d.clip(0.0, 1.0)).astype(uint8)
 
                 y_pred_dncnn: ndarray = (uint8(255) * clip(y_pred_dncnn, 0.0, 1.0)).astype(uint8)
 
                 y_pred_mixup_dncnn: ndarray = (uint8(255) * clip(y_pred_mixup_dncnn, 0.0, 1.0)).astype(uint8)
 
+                y_last: ndarray = (uint8(255) * clip(y_last, 0.0, 1.0)).astype(uint8)
+
                 bm3d_psnr = PSNR(x_bm3d_dn, y)
-                # gradnet_bm3d_psnr = PSNR(y_pred_bm3d, y)
                 dncnn_psnr = PSNR(x_dncnn_dn, y)
                 gradnet_dncnn_psnr = PSNR(y_pred_dncnn, y)
+                gradnet_bm3d_psnr = PSNR(y_pred_bm3d, y)
                 gradnet_mixup_dncnn_psnr = PSNR(y_pred_mixup_dncnn, y)
+                last_psnr = PSNR(y_last, y)
 
                 tt.add_row([
                     ref_filenames[idx].name, 
                     f"{bm3d_psnr:.3f}", 
                     f"{dncnn_psnr:.3f}", 
-                    '',
-                    # f"{gradnet_bm3d_psnr:.3f}", 
                     f"{gradnet_dncnn_psnr:.3f}",
-                    '',
-                    f"{gradnet_mixup_dncnn_psnr}"
+                    f"{gradnet_mixup_dncnn_psnr:.3f}",
+                    f"{last_psnr}",
+                    f"{gradnet_bm3d_psnr:.3f}", 
                 ])
 
                 bm3d_psnrs.append(bm3d_psnr)
                 dncnn_psnrs.append(dncnn_psnr)
                 gradnet_dncnn_psnrs.append(gradnet_dncnn_psnr)
                 gradnet_mixup_dncnn_psnrs.append(gradnet_mixup_dncnn_psnr)
+                gradnet_bm3d_psnrs.append(gradnet_bm3d_psnr)
+                last_psnrs.append(last_psnr)
                 
                 imsave(output_data_root_path / "noisy" / ref_filenames[idx].name, x)
                 imsave(output_data_root_path / "bm3d" / ref_filenames[idx].name, x_bm3d_dn)
                 imsave(output_data_root_path / "dncnn" / ref_filenames[idx].name, x_dncnn_dn)
                 imsave(output_data_root_path / "gradnet_dncnn" / ref_filenames[idx].name, y_pred_dncnn)
                 imsave(output_data_root_path / "gradnet_mixup_dncnn" / ref_filenames[idx].name, y_pred_mixup_dncnn)
-                # imsave(output_data_root_path / "gradnet_alt_dncnn" / ref_filenames[idx].name, y_pred_mixup_dncnn)
-                # imsave(output_data_root_path / "gradnet_bm3d" / noisy_filenames[idx].name, y_pred_bm3d)
+                imsave(output_data_root_path / "last" / ref_filenames[idx].name, y_last)
+                imsave(output_data_root_path / "gradnet_bm3d" / ref_filenames[idx].name, y_pred_bm3d)
         
         tt.add_row([
             "AVG",
             f"{mean(array(bm3d_psnrs)):.3f}",
             f"{mean(array(dncnn_psnrs)):.3f}",
             f"{mean(array(gradnet_dncnn_psnrs)):.3f}",
-            '',
             f"{mean(array(gradnet_mixup_dncnn_psnrs)):.3f}",
-            '',
-            # f"{mean(array(gradnet_alt_dncnn_psnrs)):.3f}", 
-            "",
-            # f"{mean(array(gradnet_bm3d_psnrs)):.3f}", 
+            f"{mean(array(last_psnrs)):.3f}",
+            f"{mean(array(gradnet_bm3d_psnrs)):.3f}", 
         ])
 
         print(tt.draw())

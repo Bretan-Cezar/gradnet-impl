@@ -1,0 +1,207 @@
+device: cuda
+
+naive_dn: dncnn
+dncnn_checkpoint: './checkpoints_dncnn/2025-03-29T01.32.04 - non-res/ckpt-60-32.56-0.000018-2025-03-29T09.24.26.pt'
+
+model:
+  init_feature_size: 64
+  grad_mixup: False
+  grad_replicas: 1
+  no_res_modules: 4
+  res_modules_units_channels:
+    1:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
+    
+    2:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
+
+    3:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
+
+    4:
+      1:
+        - 67
+        - 67
+        - 67
+      2:
+        - 67
+        - 67
+        - 67
+      3:
+        - 67
+        - 67
+        - 67
+      4:
+        - 67
+        - 67
+        - 67
+
+dataset:
+  train_files:
+    ./datasets/DIV2K/train:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: True
+      rotate: True
+      crop_count: 1
+      
+    ./datasets/DIV2K/val:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: True
+      rotate: True
+      crop_count: 1
+    
+    ./datasets/BSD/train:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: True
+      rotate: True
+      crop_count: 1
+    
+    ./datasets/BSD/test:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: True
+      rotate: True
+      crop_count: 1
+    
+    ./datasets/BSD/val:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: True
+      rotate: True
+      crop_count: 1
+    
+    ./datasets/RENOIR:
+     type: real
+     ref_path: ref
+     noisy_path: noisy1
+     flip: True
+     rotate: True
+     crop_count: 4
+
+    ./datasets/PolyU:
+     type: real
+     ref_path: ref
+     noisy_path: noisy
+     flip: True
+     rotate: True
+     crop_count: 4
+
+    ./datasets/SIDD:
+     type: real
+     ref_path: ref
+     noisy_path: noisy
+     flip: True
+     rotate: True
+     crop_count: 4
+    
+  val_files:
+    ./datasets/CBSD68/train:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: False
+      rotate: False
+      crop_count: 1
+
+    ./datasets/CBSD68/val:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: False
+      rotate: False
+      crop_count: 1
+
+    ./datasets/Kodak24:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: False
+      rotate: False
+      crop_count: 1
+
+    ./datasets/McMaster:
+      type: awgn
+      sigma_min: 0.032 #  8 for values between 0-255
+      sigma_max: 0.250 # 64 for values between 0-255
+      flip: False
+      rotate: False
+      crop_count: 1
+
+    ./datasets/SIDD:
+     type: real
+     ref_path: ref
+     noisy_path: noisy
+     flip: False
+     rotate: False
+     crop_count: 1
+  
+  crop:
+    height: 80
+    width: 80
+
+training:
+  learning_rate: 1e-3
+  learning_rate_decay_patience: 10
+  learning_rate_decay_factor: 0.2
+  grad_loss_weight: 0.1
+  epochs: 200
+  batch_size: 48
+  ckpt_path: "./checkpoints"
+  num_workers: 7
+  precision: 32
+
+validation:
+  batch_size: 16

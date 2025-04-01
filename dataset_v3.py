@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from pathlib import Path
-from typing import List, Tuple, Set, Union, Dict
+from typing import List, Tuple, Union, Dict
 from types import FunctionType
 from enum import StrEnum
 from cv2 import rotate, flip, imread, ROTATE_90_CLOCKWISE, ROTATE_90_COUNTERCLOCKWISE, ROTATE_180, IMREAD_COLOR_RGB
@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from skimage.restoration import estimate_sigma
 from bm3d import bm3d_rgb
 from dncnn import DnCNN
-from torch import tensor, float32, no_grad
 
 class NoiseType(StrEnum):
     AWGN = "awgn"
@@ -41,13 +40,12 @@ class CustomDataset(Dataset):
     ):
     
         self.__precision = precision
-        self.__eps = precision(1e-8)
+        self.__eps = precision(1e-6)
         self.__data: List[ImageData] = []
         self.__crop_size = crop_size
-        # self.__split = split
         self.__rotations = [ROTATE_180, ROTATE_90_CLOCKWISE, ROTATE_90_COUNTERCLOCKWISE]   
         self.__flips = [-1, 0, 1]
-        self.__ycbcr = array([[0.299, 0.587, 0.114], [-0.168737, -0.331263, 0.5], [0.5, -0.418688, -0.081313]], dtype=self.__precision)
+        self.__opp = array([[1/3, 1/3, 1/3], [0.5, 0, -0.5], [0.25, -0.5, 0.25]], dtype=self.__precision)
         self.__naive_dn = naive_dn
         
         for (k, v) in data_info.items():
@@ -121,7 +119,7 @@ class CustomDataset(Dataset):
                     crop_coords = (int(uniform(0, im_full.shape[0]-self.__crop_size[0])), int(uniform(0, im_full.shape[1]-self.__crop_size[1])))
                     sample = im_full[crop_coords[0]:crop_coords[0]+self.__crop_size[0], crop_coords[1]:crop_coords[1]+self.__crop_size[1], :]
 
-                    o = array(sample).reshape([sample.shape[0] * sample.shape[1], 3]) @ self.__ycbcr.T
+                    o = array(sample).reshape([sample.shape[0] * sample.shape[1], 3]) @ self.__opp.T
                     o_rng = o.max(axis=0) - o.min(axis=0)
                     
                     if all(o_rng > self.__eps):
@@ -218,7 +216,7 @@ class CustomDataset(Dataset):
 
                 # If using DnCNN as the naive denoise block, pass the entire batch 
                 # in the training loop for performance, returns a copy of x as the 2nd element
-                x_naive_dn = moveaxis(array(x), -1, 0)
+                x_naive_dn = moveaxis(array(x), -1, 0) + self.__eps
 
             x = moveaxis(x, -1, 0) + self.__eps
             y = moveaxis(y, -1, 0) + self.__eps

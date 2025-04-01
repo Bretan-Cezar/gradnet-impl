@@ -1,15 +1,15 @@
 device: cuda
 
-dncnn_path: './checkpoints_dncnn/2025-03-29T01.32.04/ckpt-60-32.56-0.000018-2025-03-29T09.24.26.pt'
-gradnet_bm3d_path: "./checkpoints/"
-gradnet_dncnn_path: "./checkpoints/2025-03-29T16.43.15/ckpt-71-36.61-0.0004-2025-03-29T23.09.53.pt"
-gradnet_mixup_dncnn_path: "./checkpoints/2025-03-30T04.43.20/ckpt-67-36.64-0.0004-2025-03-30T18.27.26.pt"
+dncnn_path: './checkpoints_dncnn/2025-03-29T01.32.04 - non-res/ckpt-60-32.56-0.000018-2025-03-29T09.24.26.pt'
+gradnet_bm3d_path: "./checkpoints/2025-03-31T11.38.59 - bm3d/ckpt-19-36.56-0.0006-2025-04-01T05.43.47.pt"
+gradnet_dncnn_path: "./checkpoints/2025-03-29T16.43.15 - dncnn_reg/ckpt-71-36.61-0.0004-2025-03-29T23.09.53.pt"
+gradnet_mixup_dncnn_path: "./checkpoints/2025-03-30T04.43.20 - dncnn_mixup/ckpt-67-36.64-0.0004-2025-03-30T18.27.26.pt"
 
 files:
   input_paths:
     ./datasets/Kodak24:
       type: awgn
-      sigma: 0.098
+      sigma: 0.196
     
     ./datasets/SIDD:
      type: real

@@ -1,5 +1,5 @@
 from torch.utils.tensorboard import SummaryWriter
-from torch import float32, float16, Tensor, abs, sum, no_grad, save, dtype, cuda, mean, load
+from torch import float32, float16, Tensor, abs, no_grad, save, dtype, cuda, mean, load
 from torch.utils.data import DataLoader
 from torch.nn import L1Loss
 from torch.optim import Adam
@@ -78,18 +78,30 @@ def train(a: TrainArgs):
             if isinstance(a.naive_dn, DnCNN):
                 with no_grad():
                     x_naive_dn = a.naive_dn(x_naive_dn)
-
+                    
             y: Tensor = y.to(a.torch_precision).to(a.device)
             
+            # figure()
+            # subplot(1,3,1)
+            # imshow(np.moveaxis(x.cpu().numpy()[0, :, :, :], 0, -1))
+
+            # subplot(1,3,2)
+            # imshow(np.moveaxis(x_naive_dn.cpu().numpy()[0, :, :, :], 0, -1).clip(0.0, 1.0))
+
+            # subplot(1,3,3)
+            # imshow(np.moveaxis(y.cpu().numpy()[0, :, :, :], 0, -1))
+
+            # show()
+
             y_pred: Tensor = a.model(x, x_naive_dn)
 
-            # The paper doesn't state the usage of a mean, but the grad loss reaches 10^5 if using a sum instead
             # MUST BE COMPUTED BEFORE MAIN LOSS
+            # The paper doesn't state the usage of a mean, but the grad loss reaches 10^5 if using a sum instead
             h_grad_loss = mean(abs(a.gradient_utils.get_horizontal_gradient(y_pred) - a.gradient_utils.get_horizontal_gradient(y)))
             v_grad_loss = mean(abs(a.gradient_utils.get_vertical_gradient(y_pred) - a.gradient_utils.get_vertical_gradient(y)))
             grad_loss = h_grad_loss + v_grad_loss
-            # grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
 
+            # grad_loss = a.grad_replicas * (h_grad_loss + v_grad_loss)
             main_loss = a.main_loss(y_pred, y)
 
             loss = main_loss + a.grad_loss_weight * grad_loss
@@ -161,7 +173,7 @@ def validate(a: ValidateArgs):
             x_naive_dn: Tensor = x_naive_dn.to(a.torch_precision).to(a.device)
 
             if isinstance(a.naive_dn, DnCNN):
-                x_naive_dn = a.naive_dn(x)
+                x_naive_dn = a.naive_dn(x_naive_dn).clip(0.0, 1.0)
             
             y_pred: np.ndarray = a.model(x, x_naive_dn).cpu().numpy()
             
@@ -255,7 +267,7 @@ def main(config):
         dncnn_ckpt_path = Path(config['dncnn_checkpoint'])
 
         with open(dncnn_ckpt_path, 'rb') as f:
-            naive_dn: DnCNN = load(f, weights_only=False).to(device).eval()
+            naive_dn: DnCNN = load(f, weights_only=False).to(device)
             
 
     ds_train = CustomDataset(
