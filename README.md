@@ -1,5 +1,10 @@
 # gradnet-impl
-Unofficial implementation of the "GradNet Image Denoising" paper
+Unofficial implementation of the "GradNet Image Denoising" paper. 
+
+Includes:
+ - Code for model implementation, training and inference, custom datasets; fully configured via YAML specification files;
+ - Interfunctionality with DnCNN and BM3D as the "naive denoisers";
+ - Presentation on the general problem, the literature, the paper's proposed method, own setup, tests and experiments using implementation and results;
 
 Citations:
 
